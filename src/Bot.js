@@ -21,22 +21,22 @@ class Bot {
     GatewayIntentBits.GuildEmojisAndStickers
   ];
 
-  constructor(name) {
+  constructor(name, token) {
     const useful = Useful.getInstance();
-    const template = Template.getInstance();
     this.name = name;
+    this.token = token;
     this.discord = new Client({ intents: this.intents });
     // Fetch a channel by its id
-    this.token = useful.env[`BOT_${name}_TOKEN`];
-    this.template = template.getTemplateByBot(this.name);
 
     this.discord.login(this.token);
     this.discord.on('ready', () => {
       console.log(`Logged in as ${this.discord.user.tag}!`);
     });
-    useful.setAdminLogChannel(this.discord.channels.fetch(useful.adminLogChannelID));
-    useful.setBardChannel(this.discord.channels.fetch(useful.BardChannelID));
 
+    if (!useful.adminLogChannel)
+      useful.setAdminLogChannel(this.discord.channels.fetch(useful.adminLogChannelID));
+    if (!useful.BardChannel)
+      useful.setBardChannel(this.discord.channels.fetch(useful.BardChannelID));
   }
 
   async ask(question) {

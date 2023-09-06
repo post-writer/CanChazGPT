@@ -1,25 +1,19 @@
 import Useful from './Useful.js';
 import Bot from './Bot.js';
-
-const useful = Useful.getInstance();  // Assuming you've implemented the singleton pattern in Useful.js
+const useful = Useful.getInstance();
 
 class Bots {
   static instance;
   bots = {};
-  client;
 
   constructor() {
     if (Bots.instance) {
       return Bots.instance;
     }
+    this.bots['TotallyHuman'] = new Bot('TotallyHuman', useful.env['BOT_TOTALLYHUMAN_TOKEN']);
+    // this.bots['RookieRaccoon'] = new Bot('RookieRaccoon',useful.env['BOT_ROOKIERACCOON_TOKEN']);
 
-    for (const entry in useful.env) {
-      if (!entry.startsWith('BOT_')) continue;
-      const name = entry.split('_')[1];
-      this.bots[name] = new Bot(name);
-    }
-
-    this.client = this.bots[0]?.discord;
+    this.client = this.bots['TotallyHuman'].discord;
     this.configureWatchers();
 
     Bots.instance = this;
