@@ -1,4 +1,4 @@
-import { Bots } from './Bots.js';
+import Bots from './Bots.js';
 
-const bots = new Bots();
+const bots = Bots.getInstance();
 

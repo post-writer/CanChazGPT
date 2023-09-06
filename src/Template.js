@@ -60,15 +60,17 @@ own personalities and styles, based on prior conversations and your personal
 preferences.
 `;
 
-export class Template {
+class Template {
 
-  constructor(name) {
+  constructor(name = "") {
     // not implemented yet: individual templates for each bot
     this.template = template;
     return this;
   }
-  getTemplate(name) {
+  getTemplate(name = "") {
     return this.template;
   }
 
 }
+
+export default Template;

@@ -1,5 +1,5 @@
-import { Useful } from './Useful.js';
-import { Bot } from './Bot.js';
+import Useful from './Useful.js';
+import Bot from './Bot.js';
 
 const useful = Useful.getInstance();  // Assuming you've implemented the singleton pattern in Useful.js
 
@@ -69,4 +69,4 @@ class Bots {
   }
 }
 
-export { Bots };
+export default Bots;

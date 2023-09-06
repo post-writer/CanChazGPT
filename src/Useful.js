@@ -49,4 +49,4 @@ class Useful {
   }
 }
 
-export { Useful };
+export default Useful;

@@ -1,10 +1,8 @@
 import { Client, GatewayIntentBits } from 'discord.js';
-import { Useful } from './Useful.js';
-import { Template } from './Template.js';
+import Useful from './Useful.js';
+import Template from './Template.js';
 
-const useful = Useful.getInstance();
-
-export class Bot {
+class Bot {
 
   // set up intents to monitor
   intents = [
@@ -25,12 +23,13 @@ export class Bot {
   ];
 
   constructor(name) {
+    const useful = Useful.getInstance();
     this.name = name;
     this.discord = new Client({ intents: this.intents });
-    useful.setAdminLogChannel(this.discord.channels.cache.get(useful.adminLogChannelID));
-    useful.setBardChannel(this.discord.channels.cache.get(useful.bardChannelID));
+    useful.setAdminLogChannel(this.discord.ChannelManager.npfetch(useful.adminLogChannelID));
+    useful.setBardChannel(this.discord.ChannelManager.fetch(useful.bardChannelID));
     this.token = useful.env[`${name}_TOKEN`];
-    this.template = Template.getTemplate(name);
+    this.template = Template.getTemplate(this.name);
 
     this.discord.login(this.token);
     this.discord.on('ready', () => {
@@ -70,5 +69,4 @@ export class Bot {
   }
 }
 
-
-
+export default Bot;

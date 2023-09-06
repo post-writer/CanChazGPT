@@ -1,0 +1,217 @@
+#!/bin/bash
+
+# # Use trap in case of error to bring back the terminal to the foreground
+# # using osascript
+# trap_cleanup() {
+#     osascript -e 'tell application "Terminal" to activate'
+#     [[ $TIMER_PID ]] && kill -9 "$TIMER_PID" 2>/dev/null
+# }
+# trap trap_cleanup EXIT INT TERM
+
+MODEL='gpt-3.5-turbo' # OpenAI model to use
+DELAY=20 # Minimum delay in seconds between commits
+REDACTED_WARNING="REDACTED COMPLETELY FOR SAFETY"
+
+whichcode=$(which code || which code-insiders)
+if [[ -z "$whichcode" ]]; then
+    echo "Error: Neither 'code' nor 'code-insiders' found. Please install Visual Studio Code." >&2
+    exit 1
+fi
+
+# Current process's parent directory
+REPO_DIR="$(dirname "$(ps -p $$ -o ppid=)")"
+PROMPT="Based on the following changes, suggest a commit message - please avoid including any potentially sensitive information, such as passwords, tokens, api keys, etc:"
+
+check_repo() {
+  REPO_DIR="/Volumes/home/Projects.NAS/CanChazGPT"
+  cd "$REPO_DIR" || exit 1
+
+  # Check if REPO_DIR is a git repository
+  if [[ ! -d "$REPO_DIR/.git" ]]; then
+      echo "Error: The provided directory is not a git repository." >&2
+      exit 1
+  fi
+
+  # make sure repo has a .gitignore
+  if [[ ! -f "$REPO_DIR/.gitignore" ]]; then
+      echo "Error: The provided directory does not have a .gitignore file." >&2
+      exit 1
+  fi
+  echo "Watcher script starting using REPO_DIR $REPO_DIR " >&2
+}
+
+config_watcher() {
+  mkdir -p "$REPO_DIR/.vscode"
+
+  if [[ ! -f "$REPO_DIR/.vscode/tasks.json" ]]; then
+      echo '{}' > "$REPO_DIR/.vscode/tasks.json"
+  fi
+
+  # Define the new task as a multiline json string
+  NEW_TASK=$(cat <<EOF
+  {
+      "label": "Run Watcher Script",
+      "type": "shell",
+      "command": \"\${workspaceFolder}\"/$(basename "$0")'",
+      "problemMatcher": []
+  }
+EOF
+  )
+
+  # Check if the task already exists in tasks.json
+  if ! jq --argjson task "$NEW_TASK" '.tasks[]? | select(.label == ($task | .label))' "$REPO_DIR/.vscode/tasks.json" > /dev/null; then
+      # Append the new task to tasks.json
+      jq --argjson task "$NEW_TASK" '.tasks += [$task]' "$REPO_DIR/.vscode/tasks.json" > "$REPO_DIR/.vscode/tmp_tasks.json" && mv "$REPO_DIR/.vscode/tmp_tasks.json" "$REPO_DIR/.vscode/tasks.json"
+  fi
+
+  if [[ "$(pwd)" != "$REPO_DIR" ]]; then
+      eval "$whichcode --task "Run Watcher Script" $REPO_DIR"
+      exit 0
+  fi
+}
+
+
+kill_other_watchers() {
+  # kill any current watchers
+  echo "Killing any existing watchers..." >&2
+
+  pgrep -af "$(basename "$0")" | while read pid; do
+      if [[ $pid -ne $$ ]]; then
+          echo "Killing watcher with PID $pid..." >&2
+          kill -9 "$pid"
+      fi
+  done
+}
+
+install() {
+  echo "Checking if $1 is installed..." >&2
+  if ! command -v "$1" &> /dev/null; then
+    echo "$1 is not installed. Attempting to install using brew..." >&2
+    if ! command -v brew &> /dev/null; then
+        echo "Error: brew is not installed. Please install Homebrew first." >&2
+        exit 1
+    fi
+
+    brew install "$1" >&2
+
+    if ! command -v "$1" &> /dev/null; then
+        echo "Error: Failed to install $1. Please install it manually." >&2
+        exit 1
+    fi
+    # restart script on successful install
+    echo "Successfully installed $1. Restarting script..." >&2
+    exec $0 "$1"
+  fi
+  # otherwise continue as normal
+ return 0
+}
+
+redact_sensitive() {
+  # List of sensitive keywords
+  # concatenate all lines from stdin into a single string
+  candidate=$(cat -)
+
+  SENSITIVE_KEYWORDS=("password" "apikey" "secret" "token" "jewel" "/Volumes/")
+
+  # Redact sensitive keywords
+  for keyword in "${SENSITIVE_KEYWORDS[@]}"; do
+    if [[ $candidate =~ $keyword ]]; then
+      echo "$REDACTED_WARNING"
+      echo "REDACTED" >&2
+      return 1
+    fi
+  done
+
+  # remove all but the numbers
+  numbers=$(echo "$candidate" | tr -dc '0-9')
+
+  # if the number is >6 digits long, it's probably something sensitive
+  if [[ ${#numbers} -gt 6 ]]; then
+    echo "$REDACTED_WARNING"
+    echo "$REDACTED_WARNING" >&2
+    return 1
+  else
+    echo "$candidate"
+  fi
+  return 0
+}
+
+get-commit-message(){
+  # get commit message from openai
+  COMMIT_MSG=$(openai api completions.create -m $MODEL -p "$PROMPT\n$GIT_DIFF" --n 1)
+  if ! $COMMIT_MSG; then
+    echo "Error: Failed to generate commit message. Using default." >&2
+    COMMIT_MSG="Update $(date +%Y-%m-%d %H:%M:%S)"
+    return
+  fi
+
+  echo "$COMMIT_MSG" | jq -r '.choices[0].text' | redact_sensitive
+
+  echo "Proposed commit message: $COMMIT_MSG" >&2
+}
+
+switchToAutosaveBranch() {
+    CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+    git stash
+
+    if ! git show-ref --verify --quiet refs/heads/AUTOSAVE; then
+        git branch AUTOSAVE
+    fi
+
+    git checkout AUTOSAVE
+    git stash apply
+}
+
+switchBackToFormerBranch() {
+  git checkout "$CURRENT_BRANCH"
+  git stash pop
+}
+
+commitChanges() {
+  git add .
+  if git diff-index --quiet HEAD --; then
+    echo "No changes to commit." >&2
+  else
+    GIT_DIFF=$(git diff --cached)
+    get-commit-message
+
+    if git commit -m "$COMMIT_MSG" ||
+      git commit -m "Update $(date +%Y-%m-%d %H:%M:%S)" ; then
+        echo "Successfully committed changes to AUTOSAVE branch." >&2
+    else
+        echo "Error: Failed to commit changes." >&2
+    fi
+  fi
+}
+
+changesFound() {
+  if [[ $TIMER_PID ]]; then
+      echo "Resetting timer..." >&2
+      pkill -9 -p $TIMER_PID >& /dev/null
+  fi
+
+  (sleep $DELAY &&
+    switchToAutosaveBranch
+    commitChanges
+    switchBackToFormerBranch
+) &
+
+  TIMER_PID=$! # Store the PID of the timer process
+}
+
+fswatch_loop() {
+  fswatch -o $REPO_DIR | while read f; do
+    changesFound
+  done
+}
+
+#  main script
+check_repo
+kill_other_watchers
+install fswatch
+install openai
+install jq
+config_watcher
+
+# Start watching
+fswatch_loop
