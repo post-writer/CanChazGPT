@@ -22,9 +22,8 @@ class Useful {
     this.bardChannelID = this.env.BARD_CHANNEL_ID;
     this.openAIKey = this.env.OPENAI_API_KEY;
 
-    // Assuming you have a Discord client instance somewhere for the next two lines
-    // this.adminLogChannel = this.discord.channels.cache.get(this.adminLogChannelID);
-    // this.bardChannel = this.discord.channels.cache.get(this.bardChannelID);
+    this.adminLogChannel = this.discord.channels.cache.get(this.adminLogChannelID);
+    this.bardChannel = this.discord.channels.cache.get(this.bardChannelID);
 
     this.openai = new OpenAI({
       apiKey: this.openAIKey,
