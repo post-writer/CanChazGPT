@@ -1,5 +1,7 @@
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
+import { discord } from './discord.js';
+
 
 class Useful {
   static instance;
@@ -18,11 +20,12 @@ class Useful {
 
     this.minimumWaitBeforeQueryingOpenAI = this.env.MINIMUM_WAIT_BEFORE_QUERYING_OPENAI;
     this.maxPrioritySum = this.env.MAX_PRIORITY_SUM;
-    this.adminLogChannelID = this.env.ADMINLOG_CHANNEL_ID;
-    this.bardChannelID = this.env.BARD_CHANNEL_ID;
     this.openAIKey = this.env.OPENAI_API_KEY;
 
+    this.discord = discord;
+    this.adminLogChannelID = this.env.ADMINLOG_CHANNEL_ID;
     this.adminLogChannel = this.discord.channels.cache.get(this.adminLogChannelID);
+    this.bardChannelID = this.env.BARD_CHANNEL_ID;
     this.bardChannel = this.discord.channels.cache.get(this.bardChannelID);
 
     this.openai = new OpenAI({
