@@ -27,12 +27,14 @@ export class Bot {
   constructor(name) {
     this.name = name;
     this.discord = new Client({ intents: this.intents });
+    useful.setAdminLogChannel(this.discord.channels.cache.get(useful.adminLogChannelID));
+    useful.setBardChannel(this.discord.channels.cache.get(useful.bardChannelID));
     this.token = useful.env[`${name}_TOKEN`];
     this.template = Template.getTemplate(name);
 
     this.discord.login(this.token);
     this.discord.on('ready', () => {
-      useful.adminLogChannel.send(`${this.name} is online!`);
+      console.log(`Logged in as ${this.discord.user.tag}!`);
     });
   }
 

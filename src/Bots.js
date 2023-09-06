@@ -19,7 +19,7 @@ class Bots {
       this.bots[name] = new Bot(name);
     }
 
-    this.client = Object.values(this.bots)[0]?.discord;  // Assuming the first bot has a discord client
+    this.client = this.bots[0]?.discord;
     this.configureWatchers();
 
     Bots.instance = this;
@@ -42,7 +42,7 @@ class Bots {
   }
 
   static askAll(messages) {
-    const text = messages.map(m => `${m.author.name}: ${m.content}`).join('\n');
+    const text = messages.map(m => `${m.author.name}: ${m.content} `).join('\n');
     let total_priority = 0;
 
     const responses = Object.values(this.bots).map(bot => bot.ask(text))
