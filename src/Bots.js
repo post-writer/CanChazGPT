@@ -1,4 +1,4 @@
-import config from '../config.json';
+import config from '../config.js'
 import Bot from './Bot.js';
 
 class Bots {
@@ -10,8 +10,8 @@ class Bots {
       return this.instance;
     }
     this.bots = {
-      TotallyHuman: new Bot('TotallyHuman', config.bot_rookieraccoon_token),
-      RookieRaccoon: new Bot('RookieRaccoon', config.bot_rookieraccoon_token)
+      TotallyHuman: new Bot('TotallyHuman'),
+      RookieRaccoon: new Bot('RookieRaccoon')
     }
     this.client = this.bots['TotallyHuman'].discord;
     this.client.on('messageCreate', async (m) => {

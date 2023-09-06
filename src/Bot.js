@@ -1,7 +1,7 @@
 import { Client, GatewayIntentBits } from 'discord.js';
-import { config } from '../config.json';
-
-prompt_template = `
+import config from '../config.js'
+import OpenAI from 'openai';
+const prompt_template = `
 ===HELP===
 Below this help message, you will find the most recent unread messages.
 Please read them and reply (if appropriate) on a scale of 0 to 1.
@@ -85,9 +85,19 @@ class Bot {
     GatewayIntentBits.GuildEmojisAndStickers
   ];
 
-  constructor(name, token) {
+  constructor(name) {
     this.name = name;
-    this.token = token;
+    switch (name) {
+      case 'TotallyHuman':
+        this.token = config.bot_totallyhuman_token;
+        break;
+      case 'RookieRaccoon':
+        this.token = config.bot_rookieraccoon_token;
+        break;
+      default:
+        this.token = config.bot_totallyhuman_token;
+    }
+
     this.discord = new Client({ intents: this.intents });
     this.discord.login(this.token);
     this.discord.on('ready', () => {
