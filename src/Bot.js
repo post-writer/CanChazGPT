@@ -1,5 +1,6 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import Useful from './Useful.js';
+const useful = Useful.getInstance();
 
 class Bot {
 
@@ -22,21 +23,18 @@ class Bot {
   ];
 
   constructor(name, token) {
-    const useful = Useful.getInstance();
     this.name = name;
     this.token = token;
     this.discord = new Client({ intents: this.intents });
-    // Fetch a channel by its id
-
     this.discord.login(this.token);
     this.discord.on('ready', () => {
       console.log(`Logged in as ${this.discord.user.tag}!`);
+      if (!useful.adminLogChannel)
+        useful.setAdminLogChannel(this.discord.channels.fetch(useful.adminLogChannelID));
+      if (!useful.BardChannel)
+        useful.setBardChannel(this.discord.channels.fetch(useful.BardChannelID));
     });
-
-    if (!useful.adminLogChannel)
-      useful.setAdminLogChannel(this.discord.channels.fetch(useful.adminLogChannelID));
-    if (!useful.BardChannel)
-      useful.setBardChannel(this.discord.channels.fetch(useful.BardChannelID));
+    return this;
   }
 
   async ask(question) {
