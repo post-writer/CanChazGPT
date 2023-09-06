@@ -1,4 +1,4 @@
-export template = ```
+const template = ```
 [[HELP]]
 Below this help message, you will find the most recent unread messages.
 Please read them and reply (if appropriate) on a scale of 0 to 1.
