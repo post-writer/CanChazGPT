@@ -1,31 +1,21 @@
-import Useful from './Useful.js';
+import config from '../config.json';
 import Bot from './Bot.js';
-import { TimestampStyles } from 'discord.js';
-
-const useful = Useful.getInstance();
 
 class Bots {
   static instance;
-  bots = {};
+  static bots = {};
 
   constructor() {
-    if (Bots.instance) {
-      return Bots.instance;
+    if (this.instance) {
+      return this.instance;
     }
     this.bots = {
-      TotallyHuman: new Bot('TotallyHuman', useful.env['BOT_TOTALLYHUMAN_TOKEN']),
-      RookieRaccoon: new Bot('RookieRaccoon', useful.env['BOT_ROOKIERACCOON_TOKEN'])
+      TotallyHuman: new Bot('TotallyHuman', config.bot_rookieraccoon_token),
+      RookieRaccoon: new Bot('RookieRaccoon', config.bot_rookieraccoon_token)
     }
     this.client = this.bots['TotallyHuman'].discord;
-
-    this.configureWatchers();
-    return this;
-  }
-
-  configureWatchers() {
-    const client = this.client;
-    client.on('messageCreate', async (m) => {
-      if (m.channel.id !== useful.bardChannelID) return;
+    this.client.on('messageCreate', async (m) => {
+      if (m.channel.id !== config.bard_channel_id) return;
       if (this.timer) {
         this.timer.messages.push(m);
         return;
@@ -33,9 +23,11 @@ class Bots {
       this.timer = setTimeout(async () => {
         Bots.askAll(this.timer.messages);
         this.timer = null;
-      }, useful.minimumWaitBeforeQueryingOpenAI);
+      }, config.minimum_wait_before_querying_openai);
       this.timer.messages = [m];
     });
+
+    return this;
   }
 
   static askAll(messages) {
@@ -46,26 +38,36 @@ class Bots {
       (a, b) => b.priority - a.priority)
     const prioritized = sorted.map(r => {
       if ((r.priority === 1) ||
-        (total_priority <= useful.maxPrioritySum) &&
+        (total_priority <= config.max_priority_sum) &&
         (r.priority !== 0)) {
         total_priority += r.priority;
-        r.bot.send(r.text);
-        useful.adminLogChannel.send(`${r.bot.name}: priority ${r.priority} responded with ${r.text}`);
+        r.bot.discord.send(r.text);
+        log(`${r.bot.name}: priority ${r.priority} responded with ${r.text}`);
         return r.text;
       } else {
-        useful.adminLogChannel.send(`${r.bot.name}: priority ${r.priority} discarded ${r.text}`);
+        log(`${r.bot.name}: priority ${r.priority} discarded ${r.text}`);
       }
     });
 
     return prioritized;
   }
 
-  static getInstance() {
+  static async getInstance() {
     if (!Bots.instance) {
       Bots.instance = new Bots();
     }
-    return Bots.instance;
+    return await Bots.instance;
   }
+
+  static async log(message) {
+    console.log(message);
+    return await this.client.channels.cache.get(config.adminlog_channel_id).send(message);
+  }
+
+  static async send(message) {
+    return await this.client.channels.cache.get(config.bard_channel_id).send(message);
+  }
+
 }
 
 export default Bots;
